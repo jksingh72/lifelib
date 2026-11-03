@@ -33,3 +33,6 @@ generated*/
 
 # Jupyter notebook
 .ipynb_checkpoints
+
+# Node / Web Frontend
+node_modules/

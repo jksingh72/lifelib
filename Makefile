@@ -1,7 +1,7 @@
 # Makefile for lifelib project
 # Automation of development environment and common tasks
 
-.PHONY: help venv install install-dev install-test clean clean-all test test-cov lint format check build dist
+.PHONY: help venv install install-dev install-test clean clean-all test test-cov lint format check build dist web-backend web-frontend run-web
 
 # Variables
 PYTHON := python3
@@ -200,4 +200,26 @@ init: install-dev ## Fully initialize development environment
 	@echo "  make format     # Format code"
 	@echo "  make lint       # Check code"
 	@echo "  make help       # See all commands"
+	@echo "  make run-web    # Launch Web Platform (Backend + Frontend)"
 	@echo ""
+
+# Web Platform Commands
+web-backend: venv ## Start the FastAPI actuarial calculation backend
+	@echo "$(BLUE)Starting Lifelib Web Platform Backend on http://localhost:8000...$(NC)"
+	@PYTHONPATH=web/backend $(PYTHON_VENV) web/backend/run.py
+
+web-frontend: ## Start the Vite React frontend
+	@echo "$(BLUE)Starting Lifelib Web Platform Frontend on http://localhost:5173...$(NC)"
+	@npm run dev --prefix web/frontend
+
+run-web: ## Start both Web Platform backend and frontend concurrently
+	@echo "$(GREEN)═══════════════════════════════════════════════════════════$(NC)"
+	@echo "$(GREEN)  Starting Lifelib Web Platform (Backend + Frontend)...$(NC)"
+	@echo "$(GREEN)  Backend:  http://localhost:8000 (Docs: http://localhost:8000/docs)$(NC)"
+	@echo "$(GREEN)  Frontend: http://localhost:5173$(NC)"
+	@echo "$(GREEN)═══════════════════════════════════════════════════════════$(NC)"
+	@trap 'kill 0' EXIT; \
+	PYTHONPATH=web/backend $(PYTHON_VENV) web/backend/run.py & \
+	npm run dev --prefix web/frontend & \
+	wait
+
