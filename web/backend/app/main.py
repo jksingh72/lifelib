@@ -3,6 +3,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import CORS_ORIGINS
+from app.routes.models import router as models_router
+from app.routes.products import router as products_router
 from app.routes.policies import router as policies_router
 from app.routes.projections import router as projections_router
 from app.routes.scenarios import router as scenarios_router
@@ -27,6 +29,8 @@ app.add_middleware(
 )
 
 # Register API routes
+app.include_router(products_router)
+app.include_router(models_router)
 app.include_router(policies_router)
 app.include_router(projections_router)
 app.include_router(scenarios_router)

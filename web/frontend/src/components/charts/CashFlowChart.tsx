@@ -18,21 +18,57 @@ interface CashFlowChartProps {
   title?: string;
 }
 
+export const formatCurrencyTick = (val: number): string => {
+  if (val === 0) return "$0";
+  const abs = Math.abs(val);
+  const sign = val < 0 ? "-" : "";
+
+  if (abs >= 1_000_000_000) {
+    const num = abs / 1_000_000_000;
+    return `${sign}$${num % 1 === 0 ? num.toFixed(0) : num.toFixed(1)}B`;
+  }
+  if (abs >= 1_000_000) {
+    const num = abs / 1_000_000;
+    return `${sign}$${num % 1 === 0 ? num.toFixed(0) : num.toFixed(1)}M`;
+  }
+  if (abs >= 10_000) {
+    return `${sign}$${(abs / 1_000).toFixed(0)}k`;
+  }
+  if (abs >= 1_000) {
+    const num = abs / 1_000;
+    return `${sign}$${num % 1 === 0 ? num.toFixed(0) : num.toFixed(1)}k`;
+  }
+  if (abs >= 1) {
+    return `${sign}$${Math.round(abs).toLocaleString()}`;
+  }
+  return `${sign}$${abs.toFixed(2)}`;
+};
+
 export const CashFlowChart: React.FC<CashFlowChartProps> = ({
   cashflows,
   title = "Insurance Liability Cash Flows",
 }) => {
   const [viewMode, setViewMode] = useState<"stacked" | "inforce">("stacked");
 
-  const chartData = cashflows.map((cf) => ({
-    year: `Yr ${cf.year}`,
-    prem: cf.prem_income,
-    ben_death: -cf.benefit_death,
-    ben_surr: -cf.benefit_surr,
-    expenses: -cf.exps_total,
-    net_cf: cf.net_cf,
-    pols_if: cf.pols_if,
-  }));
+  const isMonthly = cashflows.length > 1 && cashflows[0].year === cashflows[1].year;
+
+  const chartData = cashflows.map((cf, idx) => {
+    const periodLabel = isMonthly ? `M${cf.t !== undefined ? cf.t + 1 : idx + 1}` : `Yr ${cf.year}`;
+    const tooltipTitle = isMonthly
+      ? `Month ${cf.t !== undefined ? cf.t + 1 : idx + 1} (Year ${cf.year})`
+      : `Year ${cf.year}`;
+
+    return {
+      period: periodLabel,
+      tooltipTitle,
+      prem: cf.prem_income,
+      ben_death: -cf.benefit_death,
+      ben_surr: -cf.benefit_surr,
+      expenses: -cf.exps_total,
+      net_cf: cf.net_cf,
+      pols_if: cf.pols_if,
+    };
+  });
 
   const formatTooltipValue = (value: number) => {
     return new Intl.NumberFormat("en-US", {
@@ -83,12 +119,19 @@ export const CashFlowChart: React.FC<CashFlowChartProps> = ({
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="year" tick={{ fontSize: 11, fill: "#64748b" }} />
+              <XAxis dataKey="period" minTickGap={20} tick={{ fontSize: 11, fill: "#64748b" }} />
               <YAxis
+                width={65}
                 tick={{ fontSize: 11, fill: "#64748b" }}
-                tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
+                tickFormatter={formatCurrencyTick}
               />
               <Tooltip
+                labelFormatter={(_, payload) => {
+                  if (payload && payload.length > 0 && payload[0]?.payload?.tooltipTitle) {
+                    return payload[0].payload.tooltipTitle;
+                  }
+                  return "";
+                }}
                 formatter={(val: number) => formatTooltipValue(val)}
                 contentStyle={{
                   backgroundColor: "#0f172a",
@@ -118,13 +161,20 @@ export const CashFlowChart: React.FC<CashFlowChartProps> = ({
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-              <XAxis dataKey="year" tick={{ fontSize: 11, fill: "#64748b" }} />
+              <XAxis dataKey="period" minTickGap={20} tick={{ fontSize: 11, fill: "#64748b" }} />
               <YAxis
+                width={50}
                 domain={[0, 1.1]}
                 tick={{ fontSize: 11, fill: "#64748b" }}
                 tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
               />
               <Tooltip
+                labelFormatter={(_, payload) => {
+                  if (payload && payload.length > 0 && payload[0]?.payload?.tooltipTitle) {
+                    return payload[0].payload.tooltipTitle;
+                  }
+                  return "";
+                }}
                 formatter={(val: number) => `${(val * 100).toFixed(2)}% in-force`}
                 contentStyle={{
                   backgroundColor: "#0f172a",

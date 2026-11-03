@@ -6,27 +6,31 @@ import { fetchSpaceTree } from "../../api/client";
 interface InspectorModalProps {
   isOpen: boolean;
   onClose: () => void;
+  productId?: string;
+  productName?: string;
 }
 
 export const InspectorModal: React.FC<InspectorModalProps> = ({
   isOpen,
   onClose,
+  productId,
+  productName,
 }) => {
   const [spaces, setSpaces] = useState<SpaceTreeItem[]>([]);
   const [selectedSpace, setSelectedSpace] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (isOpen && spaces.length === 0) {
+    if (isOpen) {
       setIsLoading(true);
-      fetchSpaceTree()
+      fetchSpaceTree(productId)
         .then((data) => {
           setSpaces(data);
           if (data.length > 0) setSelectedSpace(data[0].space);
         })
         .finally(() => setIsLoading(false));
     }
-  }, [isOpen, spaces.length]);
+  }, [isOpen, productId]);
 
   if (!isOpen) return null;
 
@@ -39,7 +43,7 @@ export const InspectorModal: React.FC<InspectorModalProps> = ({
           <div className="flex items-center space-x-2">
             <Layers className="w-5 h-5 text-sky-600" />
             <h2 className="font-bold text-slate-900 text-base">
-              modelx Space & Cell Inspector
+              {productName ? `${productName} Spaces & Formulas` : "modelx Space & Cell Inspector"}
             </h2>
           </div>
           <button
