@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+# Wrapper to execute with venv_lifelib python
+BASE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$BASE_DIR/venv_lifelib/bin/python" ]; then
+    PYTHON_BIN="$BASE_DIR/venv_lifelib/bin/python"
+elif [ -n "$VIRTUAL_ENV" ] && [ -f "$VIRTUAL_ENV/bin/python" ]; then
+    PYTHON_BIN="$VIRTUAL_ENV/bin/python"
+else
+    PYTHON_BIN="python3"
+fi
+
+exec "$PYTHON_BIN" - "$@" << 'EOF'
+import sys
+import os
+from pathlib import Path
+
+# Find repo root
+script_path = Path(__file__).resolve() if '__file__' in globals() else Path(".").resolve()
+# Look upwards for lifelib directory
+root = Path(".").resolve()
+for parent in [root] + list(root.parents):
+    if (parent / "lifelib" / "libraries").is_dir():
+        root = parent
+        break
+
+lib_dir = root / "lifelib" / "libraries"
+
+# Discover all runnable products
+# Product run.py files: lifelib/libraries/<lib>/products/<product>/run.py
+products = {}
+for p in lib_dir.glob("*/products/*/run.py"):
+    prod_name = p.parent.name
+    country = p.parent.parent.parent.name
+    key_full = f"{country}/{prod_name}"
+    products[key_full] = p
+    if prod_name not in products:
+        products[prod_name] = p  # default short name
+
+def print_help():
+    print("=" * 60)
+    print(" Lifelib Model Runner")
+    print("=" * 60)
+    print("Usage:")
+    print("  run-model <product> [model_point]")
+    print("  run-model list")
+    print("\nExamples:")
+    print("  run-model term_life")
+    print("  run-model term_life 3")
+    print("  run-model whole_life")
+    print("  run-model uslib/universal_life 1")
+    print("  run-model jplib/cancer 1")
+    print("=" * 60)
+
+def list_products():
+    print("\nAvailable Models by Library:\n")
+    by_lib = {}
+    for p in sorted(lib_dir.glob("*/products/*/run.py")):
+        country = p.parent.parent.parent.name
+        prod = p.parent.name
+        by_lib.setdefault(country, []).append(prod)
+
+    for country, prods in sorted(by_lib.items()):
+        print(f"[{country.upper()}] ({len(prods)} products):")
+        # print in clean columns
+        chunk_size = 3
+        for i in range(0, len(prods), chunk_size):
+            chunk = prods[i:i+chunk_size]
+            print("  " + "".join(f"{c:<28}" for c in chunk))
+        print()
+
+args = sys.argv[1:]
+if not args or args[0] in ("-h", "--help", "help"):
+    print_help()
+    sys.exit(0)
+
+cmd = args[0].strip().lower()
+
+if cmd == "list":
+    list_products()
+    sys.exit(0)
+
+# Match product
+target_path = None
+if cmd in products:
+    target_path = products[cmd]
+else:
+    # Fuzzy match
+    matches = [k for k in products if cmd in k.lower().replace("-", "_")]
+    if len(matches) == 1:
+        target_path = products[matches[0]]
+    elif len(matches) > 1:
+        # Prefer exact short product match if exists
+        exact = [m for m in matches if m.lower() == cmd]
+        if exact:
+            target_path = products[exact[0]]
+        else:
+            print(f"Multiple products match '{cmd}':")
+            for m in matches:
+                print(f"  - {m}")
+            print("\nPlease specify the exact product or country/product (e.g. 'run-model uslib/term_life').")
+            sys.exit(1)
+
+if not target_path or not target_path.exists():
+    print(f"Error: Product '{cmd}' not found.")
+    print("Run 'run-model list' to see all available products.")
+    sys.exit(1)
+
+# Pass model point (default to 1 if not given)
+model_point = args[1] if len(args) > 1 else "1"
+
+print(f"▶ Running: {target_path.relative_to(root)} (Model Point {model_point})")
+print("-" * 60)
+
+# Run the product script
+os.chdir(target_path.parent)
+sys.argv = [str(target_path), model_point]
+with open(target_path) as f:
+    code = compile(f.read(), str(target_path), 'exec')
+    exec(code, {'__file__': str(target_path), '__name__': '__main__'})
+EOF
+
