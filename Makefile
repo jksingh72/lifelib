@@ -72,6 +72,7 @@ install-dev: venv ## Install package in development mode (with dev dependencies)
 	@echo "  - pytest, pytest-cov, pytest-xdist (tests)"
 	@echo "  - pandas, numpy, openpyxl (tests)"
 	@echo "  - flake8, black, isort (dev)"
+	@echo "  - matplotlib, seaborn (visualization)"
 
 install-test: venv ## Install package in test mode only
 	@echo "$(BLUE)Installing package in test mode...$(NC)"

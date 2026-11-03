@@ -36,6 +36,9 @@ dependencies = [
     "modelx>=0.32",
 ]
 
+[project.scripts]
+lifelib-create = "lifelib.commands.create:main"
+
 [project.urls]
 Homepage = "https://lifelib.io"
 
@@ -58,6 +61,8 @@ dev = [
     "flake8>=6.0",
     "black>=23.0",
     "isort>=5.0",
+    "matplotlib",
+    "seaborn",
 ]
 
 [tool.pytest.ini_options]
